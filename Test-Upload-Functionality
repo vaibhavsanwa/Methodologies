@@ -324,3 +324,87 @@ Then by uploading malicious htaccess file, we can make that whitelisted extensio
 
  Malicious Payload Link: (https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Python%20__init__.py)
 ------------------------------------------------------------------------------------------------------------------
+
+Method #14 to Test Upload Functionality
+=================================
+(Abusing backend Logic to Bypass Extension Restrictions) 
+               OR we can say
+(wget File Upload/SSRF {Server Side Request Forgery}) 
+=================================
+
+In some occasions you may find that a server is using wget to download files and you can indicate the URL.
+
+In these cases, the code may be checking that the extension of the downloaded files is inside a whitelist to assure that only allowed files are going to be downloaded. 
+
+However, this check can be bypassed. The maximum length of a filename in linux is 255, however, wget truncate the filenames to 236 characters. You can download a file called "A"*232+".php"+".png", this filename will bypass the check (as in this example ".png" is a valid extension) but wget will rename the file to "A"*232+".php".
+
+In backend, server may form this type of linux command:
+
+wget "A"*232+".php.png"
+
+Server will check the last extension which is png, and thus will proceed to execute this cmd, 
+
+But while downloading, wget will remove the last 4 characters because of TOO Long filename
+
+THUS A GREAT BYPASS
+
+2. If wget command is been issued on the server with --trust-server-names parameter, then instead of using a malicious Long Filename, we can make configuration the attacker controlled
+
+HTTP server redirect to a different file, so the initial URL will bypass the check by then wget will download the redirected file with the new name
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Method #15 to Test Upload Functionality
+=============================
+SSRF (Server Side Request Forgery) and Local File Disclosure via FFmpeg HLS processing
+=============================
+
+What is FFmpeg? 
+==============
+FFmpeg is an open source software used for processing audio and video formats. 
+
+Vulnerability? 
+===========
+Almost all video streaming sites (such as YouTube, Vimeo, etc) uses FFmpeg for video conversions
+
+There is an issue with FFmpeg utility/package, due to which an attacker can achieve SSRF and Local File Read/Disclosure
+
+If we make a Malicious AVI file that contains an Malicious HLS playlist inside GAB2
+
+Then by uploading that avi (video file) to vulnerable video streaming site, 
+
+--> site will try to convert that file using FFmpeg 
+
+--> Payload inside avi will get execute
+
+--> Then by playing that video, we can either achieve SSRF or We can read the content of any sensitive file (such as etc/passwd)
+
+How to Generate Payload? 
+=====================
+Use this tool to make malicious AVI file (https://github.com/neex/ffmpeg-avi-m3u-xbin/blob/master/gen_xbin_avi.py) 
+
+Steps to Exploit? 
+==============
+1. ./gen_xbin_avi.py file://<filename> file_read.avi
+2. Upload file_read.avi to some website that processes videofiles
+3. (on server side, done by the videoservice) ffmpeg -i file_read.avi output.mp4
+4. Click "Play" in the videoservice.
+5. If you are lucky, you'll the content
+
+===============
+📖 Must Read  📖 
+===============
+1. [Medium Writeup]
+https://medium.com/@valeriyshevchenko/ssrf-vulnerability-via-ffmpeg-hls-processing-f3823c16f3c7
+
+2. [Fantastic Report by neex]
+https://hackerone.com/reports/237381
+
+3. [Hackerone - Local File Disclosure via ffmpeg @sxcurity]
+https://hackerone.com/reports/242831
+
+4. [Hackerone - Another local file disclosure via ffmpeg]
+https://hackerone.com/reports/243470
+
+5. [PHDays - Attacks on video converters:a year later, Emil Lerner, Pavel Cheremushkin]
+https://docs.google.com/presentation/d/1yqWy_aE3dQNXAhW8kxMxRqtP7qMHaIfMzUDpEqFneos/edit#slide=id.p
